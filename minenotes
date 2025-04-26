@@ -1,0 +1,41 @@
+Main Configuration Files
+	httpd.conf | apache2.conf: The primary configuration file for Apache. It contains global settings, module loading, and other directives.
+	ports.conf: Specifies the ports Apache listens on (common in Debian/Ubuntu).
+	sites-available/: Directory containing configuration files for individual sites.
+	sites-enabled/: Directory containing symbolic links to enabled sites from sites-available/.
+	conf-available/: Additional configuration files (Debian/Ubuntu).
+	conf-enabled/: Enabled configuration files (Debian/Ubuntu).
+	.htaccess: Per-directory configuration files that override global settings.
+
+====================================================================
+path of configuration 
+	/etc/apache2/apache2.conf
+	Virtual hosts are in 
+		/etc/apache2/sites-available/
+	Modules: 
+		/etc/apache2/mods-enabled/
+	Logs: 
+		/var/log/apache2/
+	DocumentRoot
+		/var/www/html
+	context 
+		Server config 
+			Affects the entire server configuration.
+			Overrides: Most other contexts except .htaccess when allowed
+			httpd.conf
+		Virtual host
+			Defines settings for specific domains or IP-based configurations.
+			Overrides global settings within the virtual host scope.
+			inside ---><VirtualHost>
+		Directory
+			Applies settings to a specific directory and its contents.
+			Higher priority than VirtualHost but lower than .htaccess.
+			used inside <Directory>, <Location>, <Files>,<Proxy>
+		.htaccess
+			Applies settings at the directory level.
+			Overrides Directory and VirtualHost when AllowOverride is enabled.
+			inside per-directory .htaccess files
+		
+=====================================================================
+
+	

@@ -1,0 +1,93 @@
+1-Install Apache HTTP Server
+	ubuntu
+		sudo apt update
+		sudo apt install apache2
+		sudo systemctl start apache2.service
+		sudo systemctl enable apache2.service
+	
+	redhat
+		sudo dnf install httpd
+		sudo systemctl start httpd
+		sudo systemctl enable httpd
+		
+2-Create Two HTML Pages and Set Up Redirection
+	sudo nano /var/www/html/page1.html
+	sudo nano /var/www/html/page2.html
+	sudo nano /var/www/html/.htaccess
+	Redirect 301 /page1.html /page2.html
+3-Ask for Username and Password When Accessing a Directory
+	1-create passwrord file
+		sudo htpasswd -c /etc/apache2/.htpasswd placeyourusername
+	2-Protect the directory:
+		sudo nano /etc/apache2/sites-available/000-default.conf
+		
+		add 
+		<Directory /var/www/html/secure>
+		    AuthType Basic
+		    AuthName "Restricted Area"
+		    AuthUserFile /etc/apache2/.htpasswd
+		    Require valid-user
+		</Directory>
+	3-Restart Apache:
+		sudo systemctl restart apache2.service
+4-Apply Authentication Before Downloading PDF Files
+	1-Protect the directory containing PDF files:
+		sudo nano /etc/apache2/sites-available/000-default.conf
+		add
+		<FilesMatch "\.pdf$">
+		    AuthType Basic
+		    AuthName "Restricted PDFs"
+		    AuthUserFile /etc/apache2/.htpasswd
+		    Require valid-user
+		</FilesMatch>
+	3-Restart Apache:
+		sudo systemctl restart apache2.service
+
+5-Create a Directory and Allow Access to One Classmate Only
+	1-Create the directory:
+
+		sudo mkdir /var/www/html/classmate
+	2-Set up authentication for the directory:
+	Edit the Apache configuration file or .htaccess:
+		<Directory /var/www/html/classmate>
+		    AuthType Basic
+		    AuthName "Classmate Access"
+		    AuthUserFile /etc/apache2/.htpasswd
+		    Require user classmate_username
+		</Directory>
+	3-Restart Apache:
+		sudo systemctl restart apache2
+6. Disable Directory Listing
+	Edit the Apache configuration file or .htaccess:
+
+		<Directory /var/www/html>
+		    Options -Indexes
+		</Directory>
+	
+	3-Restart Apache:
+		sudo systemctl restart apache2.service
+		
+7-Change the Default Index Page
+	1-Edit the Apache configuration file or .htaccess:
+
+		DirectoryIndex default.html index.html
+	2-Restart Apache:
+		sudo systemctl restart apache2
+8-Create a VirtualHost for os.iti.gov.eg
+	1-Create a configuration file:
+		sudo nano /etc/apache2/sites-available/os.iti.gov.eg.conf
+		add
+		<VirtualHost *:80>
+		    ServerAdmin webmaster@os.iti.gov.eg
+		    DocumentRoot /var/www/os.iti.gov.eg
+		    ServerName os.iti.gov.eg
+		    ErrorLog ${APACHE_LOG_DIR}/error.log
+		    CustomLog ${APACHE_LOG_DIR}/access.log combined
+		</VirtualHost>
+	2-Enable the site and restart Apache:
+		sudo a2ensite os.iti.gov.eg.conf
+		sudo systemctl restart apache2
+		
+9-Enable Rewrite Module
+	sudo a2enmod rewrite
+	sudo systemctl restart apache2
