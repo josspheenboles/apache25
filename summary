@@ -1,0 +1,15 @@
+--list static modules
+	--ubuntu
+		apache2ctl -l
+	--redhat
+		httpd -l
+--list both static & compiled modules
+	--ubuntu
+		apache2ctl -M
+	--redhat
+		httpd -m
+			
+--enable module 
+	--ubuntu
+		sudo a2enmod module_name
+

@@ -1,41 +1,266 @@
-Main Configuration Files
-	httpd.conf | apache2.conf: The primary configuration file for Apache. It contains global settings, module loading, and other directives.
-	ports.conf: Specifies the ports Apache listens on (common in Debian/Ubuntu).
-	sites-available/: Directory containing configuration files for individual sites.
-	sites-enabled/: Directory containing symbolic links to enabled sites from sites-available/.
-	conf-available/: Additional configuration files (Debian/Ubuntu).
-	conf-enabled/: Enabled configuration files (Debian/Ubuntu).
-	.htaccess: Per-directory configuration files that override global settings.
+--any web page or website must be located in /var/www/html unless you change the 
+documentroot?
 
-====================================================================
-path of configuration 
-	/etc/apache2/apache2.conf
-	Virtual hosts are in 
-		/etc/apache2/sites-available/
-	Modules: 
-		/etc/apache2/mods-enabled/
-	Logs: 
-		/var/log/apache2/
-	DocumentRoot
-		/var/www/html
-	context 
-		Server config 
-			Affects the entire server configuration.
-			Overrides: Most other contexts except .htaccess when allowed
-			httpd.conf
-		Virtual host
-			Defines settings for specific domains or IP-based configurations.
-			Overrides global settings within the virtual host scope.
-			inside ---><VirtualHost>
-		Directory
-			Applies settings to a specific directory and its contents.
-			Higher priority than VirtualHost but lower than .htaccess.
-			used inside <Directory>, <Location>, <Files>,<Proxy>
-		.htaccess
-			Applies settings at the directory level.
-			Overrides Directory and VirtualHost when AllowOverride is enabled.
-			inside per-directory .htaccess files
+--Rewrite Module is essential for:
+
+	Improving SEO and user experience.
+	Enhancing security and access control.
+	Managing URL redirections and canonicalization.
+	Handling dynamic content and routing.
+	By leveraging mod_rewrite, you can create a more robust, secure, and user-friendly web application.
+--redirect from one page to another
+	--path of page1 and page2 the same unless you must write realtive path for page2
+	--mod_rewrite module is required for URL redirection. Enable it if it’s not already enabled.
+	--RewriteEngine On: Enables the rewrite engine.
+	--301 (permanent) 
+	1-enable redirection moudle
+		sudo a2enmod rewrite
+		sudo systemctl restart apache2
+		or for redhat
+		sudo systemctl restart httpd
+	2-Configure the Redirection (.htaccess|VirtualHost)
+		a- .htaccess
+		--note must enable allowoveride all for .htaccess in apache2.conf
+		sudo nano /var/www/html/.htaccess
+		RewriteEngine On
+
+		--using relative path
+		RewriteRule  /page1.html /page2.html [R=301,L]
+		--using regulare expression
+		RewriteRule ^page1\.html$ page2.html [R=301,L]
 		
-=====================================================================
+		B-VirtualHost
+		sudo nano /etc/apache2/sites-available/000-default.conf
+		<Directory /var/www/html>
+		    RewriteEngine On
+		    --using relative path
+   			RewriteRule /page1.html /page2.html [R=301,L]
+   		    --using regulare expression
+			RewriteRule ^page1\.html$ page2.html [R=301,L]
+		</Directory>
 
+--set user name and password when accessing a directory
+	--1-Create a password file 
+		--remove -c to multi user
+		1-sudo htpasswd -c /etc/apache2/.htpasswd username
+	--2. Configure Apache to Use the Password File (.htaccess | VirtualHost )
+		a-.htaccess 
+		Add the following directives:
+			#Specifies the authentication type (Basic Authentication).
+			AuthType Basic
+			#Sets the message displayed in the login prompt.
+			AuthName "Restricted Area"
+			#Points to the password file.
+			AuthUserFile /etc/apache2/.htpasswd
+			#Allows access to any valid user in the password file.
+			Require valid-user
+		b-VirtualHost
+			<Directory /var/www/html/secure>
+			    AuthType Basic
+			    AuthName "Restricted Area"
+			    AuthUserFile /etc/apache2/.htpasswd
+			    Require valid-user
+			</Directory>
+--ask for auth befor download file (.htaccess | VirtualHost)
+	#can apply to other extensions 
+	#<FilesMatch "\.(pdf|docx|zip)$">
+	a-.htaccess
+		sudo nano /var/www/html/files/.htaccess
+		add
+		#Applies the rules to all files with a .pdf extension.
+		<FilesMatch "\.pdf$">
+		    AuthType Basic
+		    AuthName "Restricted PDF Files"
+		    AuthUserFile /etc/apache2/.htpasswd
+		    Require valid-user
+		</FilesMatch>
+	b-VirtualHost
+		sudo nano /etc/apache2/sites-available/000-default.conf
+		<Directory /var/www/html/files>
+		    <FilesMatch "\.pdf$">
+			AuthType Basic
+			AuthName "Restricted PDF Files"
+			AuthUserFile /etc/apache2/.htpasswd
+			Require valid-user
+		    </FilesMatch>
+		</Directory>
+--restrict accsess for specific user
+	--replace Require valid-user with Require user username
+	<Directory /var/www/html/yourwebsite>
+	    AuthType Basic
+	    AuthName "Restricted Directory"
+	    AuthUserFile /etc/apache2/.htpasswd
+	    Require user classmate_username
+	</Directory>
+	
+--prevent listing the directory content (.htaccess |apache2.conf )
+	-- 403 Forbidden 
+	a-.htaccess
+		sudo nano /var/www/html/your-directory/.htaccess
+		#remove Options Indexes -FollowSymLinks  
+		#add
+		Options -Indexes
+	b-apache2.conf
+		#debian
+		sudo nano /etc/apache2/apache2.conf
+		#redhat
+		sudo nano /etc/httpd/conf/httpd.conf
+		#in <Directory /var/www/html>
+		#remove    Options Indexes FollowSymLinks
+		#add
+		Options -Indexes
+--Symbolic Links (Symlinks): A symlink is a file that points to another file or directory. It acts as a shortcut.
+
+--FollowSymLinks: This Apache directive allows the server to follow symlinks and serve the content of the linked file or directory.
+--disable FollowSymLinks for security reasons
+
+--change default index ppage from index.html to default.html (.htaccess | apache2)
+
+	a-.htaccess
+		sudo nano /var/www/html/.htaccess
+		DirectoryIndex default.html index.html
+	b-apache2
+		sudo nano /etc/apache2/apache2.conf
+		<Directory /var/www/html>
+		    Options Indexes FollowSymLinks
+		    AllowOverride None
+		    Require all granted
+		    #search for default page according this order
+		    DirectoryIndex default.html index.html
+		</Directory>
+
+--Create custom virtualhost for domain website
+	#Enable Virtual Hosts
+		sudo a2enmod vhost_alias
+		sudo systemctl restart apache2
+
+	--Create the Directory Structure
+		sudo mkdir  /var/www/os.iti.gov.eg
+	--Set the correct permissions for the directory
+		# Ubuntu/Debian
+		sudo chown -R www-data:www-data /var/www/os.iti.gov.eg  
+		# CentOS/RHEL
+		sudo chown -R apache:apache /var/www/os.iti.gov.eg      
+--766		
+		sudo chmod -R 755 /var/www/os.iti.gov.eg
+	--add web page
+		sudo nano /var/www/os.iti.gov.eg/index.html
+	--Create the Virtual Host Configuration File
+		--debian
+		sudo nano /etc/apache2/sites-available/os.iti.gov.eg.conf
+		--redhat
+		sudo nano /etc/httpd/conf.d/os.iti.gov.eg.conf
+		<VirtualHost *:80>
+		
+		    ServerAdmin webmaster@os.iti.gov.eg
+			#The primary domain name (os.iti.gov.eg).
+		    ServerName os.iti.gov.eg
+		    #Additional domain names (e.g., www.os.iti.gov.eg).
+		    ServerAlias www.os.iti.gov.eg
+		 #The directory where the website files are stored.
+		    DocumentRoot /var/www/os.iti.gov.eg
+			#Configures permissions for the directory.
+		    <Directory /var/www/os.iti.gov.eg/admin>
+			Options Indexes FollowSymLinks
+			AllowOverride All
+			Require all granted
+		    </Directory>
+		#Define log file locations.
+		    ErrorLog ${APACHE_LOG_DIR}/error.log
+		    CustomLog ${APACHE_LOG_DIR}/access.log combined
+		</VirtualHost>
+	--Enable the Virtual Host
+		--debian
+			sudo a2ensite os.iti.gov.eg.conf
+		--centOS/RHEL:
+			The virtual host is automatically enabled when the
+			 configuration file is placed in
+
+	-- Update Local DNS (Optional for Testing)
+		sudo nano /etc/hosts
+		your_server_ip os.iti.gov.eg www.os.iti.gov.eg
+		
+--Enable HTTPS (Optional)
+	--obtain an SSL certificate.
+		--Install Certbot:
+			--Debian
+				sudo apt install certbot python3-certbot-apache
+			--RHEL
+				sudo dnf install certbot python3-certbot-apache
+		--Obtain and install the SSL certificate:
+			sudo certbot --apache -d os.iti.gov.eg -d www.os.iti.gov.eg
+--Verify Configuration
+	--Debian
+		sudo apachectl configtest
+	--RHEL
+		sudo httpd -t
+==================================================================================
+--prevent end user from send string in query string "username"(.htaccess | Apache)
+	--.htaccess
+	RewriteEngine On
+	RewriteCond %{QUERY_STRING} username
+	RewriteRule ^page$ - [F]
+	--Apache.conf
+	<Directory /var/www/html>
+	    RewriteEngine On
+	    RewriteCond %{QUERY_STRING} forbidden
+	    RewriteRule ^page$ - [F]
+	</Directory>
+--multiple  words
+	RewriteCond %{QUERY_STRING} (forbidden|blocked|restricted)
+--remove query string
+	#/$1?: Redirects to the same URL path ($1) but with an empty query string (?).
+	RewriteEngine On
+	RewriteCond %{QUERY_STRING} .+
+	RewriteRule ^(.*)$ /$1? [R=301,L]
+--check query key has value
+	RewriteCond %{QUERY_STRING} (^|&)var=[^&]+
+
+--add key to query string
+	#QSA (Query String Append) ensures additional query parameters are preserved.
+	#L (Last) stops further rule processing.
+	RewriteRule ^example/([^/]+)/([^/]+)$ /something.cgi?arg=$1&other=$2 [QSA,L]
+		
+--remove query key 
+	RewriteRule ^([^?]+)$ /%1/var/%2? [R=302,L]
+--Worker MPM (Multi-Processing Module) is one of the multi-threaded web server modules available for Apache HTTP Server. It is designed to handle a large number of requests efficiently by using a hybrid multi-process, multi-threaded approach. Here's a detailed explanation of the Worker MPM, its importance, and how to configure it:
+--Check the Current MPM
+	sudo apachectl -V | grep MPM
+--Enable Worker MPM
+	--Debian
+		sudo a2dismod mpm_prefork  # Disable Prefork MPM
+		sudo a2dismod mpm_event    # Disable Event MPM
+		sudo a2enmod mpm_worker
+	--RHEL
+		sudo nano /etc/httpd/conf.modules.d/00-mpm.conf
+		# LoadModule mpm_prefork_module modules/mod_mpm_prefork.so
+		# LoadModule mpm_worker_module modules/mod_mpm_worker.so
+		# LoadModule mpm_event_module modules/mod_mpm_event.so
+		LoadModule mpm_worker_module modules/mod_mpm_worker.so		
+--MPM Settings
+	--Debian
+	sudo nano /etc/apache2/mods-available/mpm_worker.conf
+	<IfModule mpm_worker_module>
+		#Number of child processes created at startup.
+	    StartServers          2
+		#Minimum number of idle threads.
+	    MinSpareThreads      25
+	    #Maximum number of idle threads.
+	    MaxSpareThreads      75
+	    #Maximum number of threads per child process.
+	    ThreadLimit          64
+	    #Number of threads created by each child process.
+	    ThreadsPerChild      25
+	    #Maximum number of simultaneous requests.
+	    MaxRequestWorkers   150
+	    #Limits the number of requests a child process can handle before it is restarted (0 means unlimited)
+	    MaxConnectionsPerChild 0
+	</IfModule>
+	--RHEL
+	sudo nano /etc/httpd/conf.modules.d/00-mpm.conf
+	
+=======================================
+Apache has an edge when it comes to dynamic content (e.g., PHP, Python, Ruby) because it can embed interpreters directly into its processes (e.g., mod_php).
+
+Nginx typically relies on external processes (e.g., PHP-FPM) to handle dynamic content, which can introduce slight overhead but is still very efficient.
 	
